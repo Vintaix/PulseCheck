@@ -1,0 +1,133 @@
+// 1. GENERATOR & DATASOURCE (These were missing!)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 2. YOUR EXISTING MODELS
+enum Role {
+  EMPLOYEE
+  HR_MANAGER
+}
+
+enum QuestionType {
+  SCALE_1_5
+  OPEN
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  department   String   @default("General")
+  passwordHash String?
+  role         Role     @default(EMPLOYEE)
+  createdAt    DateTime @default(now())
+
+  responses Response[]
+  Insight   Insight[]
+}
+
+model Question {
+  id       String       @id @default(uuid())
+  text     String
+  type     QuestionType
+  isActive Boolean      @default(false)
+  order    Int          @default(0)
+
+  responses Response[]
+}
+
+model Survey {
+  id         String @id @default(uuid())
+  weekNumber Int
+  year       Int
+
+  responses    Response[]
+  Insight      Insight[]
+  actionCaches ActionCache[]
+
+  @@unique([weekNumber, year])
+}
+
+model Response {
+  id           String   @id @default(uuid())
+  userId       String
+  questionId   String
+  surveyId     String
+  valueNumeric Int?
+  valueText    String?
+  submittedAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id])
+  question Question @relation(fields: [questionId], references: [id])
+  survey   Survey   @relation(fields: [surveyId], references: [id])
+
+  @@unique([userId, questionId, surveyId])
+  @@index([surveyId])
+  @@index([questionId])
+  @@index([userId])
+}
+
+model AIConfig {
+  id             String   @id @default(uuid())
+  key            String   @unique
+  questionPrompt String   @default("Je bent een HR expert die wekelijkse engagement vragen maakt voor een Vlaamse KMO. Genereer 3 vragen: 2 SCALE_1_5 vragen en 1 OPEN vraag. De vragen moeten relevant, kort en duidelijk zijn, en variëren per week.")
+  focusAreas     String? 
+  tone           String   @default("professioneel")
+  language       String   @default("Nederlands")
+  insightsPrompt String?
+  updatedAt      DateTime @default(now()) @updatedAt
+}
+
+enum InsightType {
+  EMPLOYEE
+  TEAM
+  COMPANY
+}
+
+model Insight {
+  id        String      @id @default(uuid())
+  type      InsightType
+  userId    String?
+  surveyId  String
+  language  String      @default("nl")
+  content   String
+  createdAt DateTime    @default(now())
+
+  user   User?  @relation(fields: [userId], references: [id])
+  survey Survey @relation(fields: [surveyId], references: [id])
+
+  @@unique([type, userId, surveyId, language])
+  @@index([surveyId])
+  @@index([userId])
+}
+
+model ActionCache {
+  id          String   @id @default(uuid())
+  surveyId    String
+  language    String   @default("nl")
+  actionsJson String
+  createdAt   DateTime @default(now())
+
+  survey Survey @relation(fields: [surveyId], references: [id])
+
+  @@unique([surveyId, language])
+}
+
+// 3. THE NEW MODEL (Sentiment History)
+model WeeklySentiment {
+  id         String   @id @default(uuid())
+  weekNumber Int
+  year       Int
+  
+  score      Int      // 0 to 100
+  summary    String   // "Team is stressed..."
+  generatedAt DateTime @default(now())
+
+  @@unique([weekNumber, year])
+}

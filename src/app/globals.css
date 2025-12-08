@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    /* Modern SaaS Palette - Clean & Crisp */
+    --background: #FFFFFF;
+    --foreground: #0F172A;
+    /* Slate 900 */
+
+    /* Primary Accent - Sophisticated Indigo/Blue or keep the brand Terra Cotta but cleaner? 
+       User liked the 'modern' look. Let's go with a vibrant but professional primary. 
+       If previous was Terra Cotta (#CC785C), a modern version might be slightly more saturated or paired with better neutrals.
+       Let's stick to a modern Blue-Gray or Indigo for "SaaS", OR keep the specific brand color if it's core.
+       The prompt said: "clean up the whole ui... not like a wordpress site".
+       I will use a high-quality Slate palette for neutrals and a refined primary.
+    */
+    --primary: #CC785C;
+    /* Keeping brand color identity but framing it better */
+    --primary-dark: #A85D47;
+    --primary-foreground: #FFFFFF;
+
+    --muted: #64748B;
+    /* Slate 500 */
+    --muted-light: #F1F5F9;
+    /* Slate 100 */
+
+    /* Card Styling - Modern 'Float' look */
+    --card-bg: #FFFFFF;
+    --card-border: #E2E8F0;
+    /* Slate 200 */
+    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+}
+
+body {
+    background: #F8FAFC;
+    /* Slate 50 - Very subtle off-white for depth */
+    color: var(--foreground);
+    /* Enforcing the new font everywhere */
+    font-family: var(--font-dm-sans), 'DM Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography - DM Sans specific tweaks */
+h1 {
+    font-weight: 700;
+    /* Bold impact */
+    letter-spacing: -0.03em;
+    color: #0F172A;
+}
+
+h2,
+h3 {
+    font-weight: 600;
+    /* Semi-bold */
+    letter-spacing: -0.02em;
+    color: #1E293B;
+}
+
+h4,
+h5,
+h6 {
+    font-weight: 500;
+    /* Medium */
+    color: #334155;
+}
+
+/* Add a utility for light text specific to DM Sans which looks great */
+.font-light-display {
+    font-weight: 300;
+}
+
+/* Modern Inputs */
+input,
+select,
+textarea {
+    background-color: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 0.5rem;
+    /* 8px */
+    padding: 0.5rem 0.75rem;
+    font-size: 0.95rem;
+    transition: all 0.2s ease-in-out;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(204, 120, 92, 0.15);
+    /* Primary color w/ opacity */
+}
+
+/* Modern Card Class */
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 1rem;
+    /* 16px - Modern rounded corners */
+    box-shadow: var(--card-shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: var(--card-shadow-hover);
+    border-color: #CBD5E1;
+    /* Slight border darken on hover */
+}
+
+/* Buttons - Flat & Punchy */
+.btn-primary {
+    background-color: var(--foreground);
+    /* Solid Dark Button */
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    /* Match modern rounding */
+    font-weight: 600;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background-color: #1E293B;
+    /* Slightly lighter slate for hover */
+}
+
+/* Utility Overrides for "WordPress-ness" removal */
+/* Remove default browser outlines and ugly scrollbars */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
+}
