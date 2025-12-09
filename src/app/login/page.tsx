@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react'; // Added useCallback
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/i18n/LocaleContext';
@@ -26,12 +26,9 @@ export default function LoginPage() {
   const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Helper functie om te bepalen waar iemand heen moet
-  const handleRedirect = (role: string | undefined) => {
-    // Normaliseer de rol naar hoofdletters voor de check
+  // FIX: Wrapped in useCallback to satisfy the useEffect dependency warning
+  const handleRedirect = useCallback((role: string | undefined) => {
     const upperRole = role?.toUpperCase();
-
-    // Check voor alle management rollen
     const managementRoles = ['HR_MANAGER', 'ADMIN', 'MANAGER'];
 
     if (upperRole && managementRoles.includes(upperRole)) {
@@ -41,7 +38,7 @@ export default function LoginPage() {
       console.log('Redirecting User to /survey');
       router.replace('/survey');
     }
-  };
+  }, [router]);
 
   // Check if already logged in (Auto-login)
   useEffect(() => {
@@ -49,7 +46,6 @@ export default function LoginPage() {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session) {
-        // Gebruiker is al ingelogd, haal rol op
         const { data: profile, error } = await supabase
           .from('profiles')
           .select('role')
@@ -58,7 +54,6 @@ export default function LoginPage() {
 
         if (error) {
           console.error("Auto-login profile fetch error:", error);
-          // Bij error niet zomaar doorsturen, maar sessie check stoppen
           setCheckingSession(false);
           return;
         }
@@ -69,14 +64,13 @@ export default function LoginPage() {
       }
     }
     checkAuth();
-  }, [router, supabase]);
+  }, [supabase, handleRedirect]); // Now 'handleRedirect' is a valid dependency
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    // 1. Inloggen
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -94,7 +88,6 @@ export default function LoginPage() {
       return;
     }
 
-    // 2. Als login succesvol is, haal profiel op
     if (data.user) {
       console.log("Login successful, fetching profile for:", data.user.id);
 
@@ -106,7 +99,6 @@ export default function LoginPage() {
 
       if (profileError) {
         console.error("Profile fetch failed:", profileError);
-        // Fallback: Als we geen profiel kunnen lezen, tonen we een error ipv naar survey te sturen
         setError("Login successful, but could not load profile data. Please contact support.");
         setLoading(false);
         return;
@@ -130,7 +122,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-6">
       <div className="w-full max-w-sm">
-        {/* Header */}
         <div className="text-center mb-8 animate-fade-in">
           <Link href="/" className="inline-block mb-6">
             <Logo className="w-12 h-12" />
@@ -143,17 +134,14 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Paper Card Form */}
         <div className="paper-card p-8 animate-fade-in-delay-1">
           <form onSubmit={onSubmit} className="space-y-4">
-
             {error && (
               <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">
                 <AlertCircle size={16} />
                 {error}
               </div>
             )}
-
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-1.5 ml-1">Email</label>
@@ -200,7 +188,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Sign Up Link */}
           <div className="mt-6 pt-6 text-center border-t border-card-border">
             <p className="text-muted text-sm">
               Don&apos;t have an account?{" "}

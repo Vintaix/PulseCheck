@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"; // <--- CHANGED: Use Supabase
+import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentWeekAndYear } from "@/lib/week";
 import { generateTeamInsights, generateActionRecommendations } from "@/lib/ai";
@@ -6,45 +6,48 @@ import { redirect } from "next/navigation";
 import DashboardClient from "./DashboardClient";
 
 export default async function DashboardPage() {
-  // --- 1. AUTHENTICATION FIX (Supabase) ---
+  // --- 1. AUTHENTICATION CHECK ---
   const supabase = await createClient();
 
-  // Check if user is logged in via Supabase
   const { data: { user }, error } = await supabase.auth.getUser();
 
   if (error || !user) {
     redirect("/login");
   }
 
-  // Check the Role using the database (Prisma or Supabase)
-  // We use the Supabase User ID to find the user in Prisma
+  // --- 2. ROLE CHECK (The Fix) ---
   const dbUser = await prisma.user.findUnique({
-    where: { id: user.id }, // Assumes Prisma User ID matches Supabase Auth ID
+    where: { id: user.id },
     select: { role: true, name: true }
   });
 
-  // If user not found in DB or wrong role, send to survey
-  // We check for both HR_MANAGER and ADMIN
-  if (!dbUser || (dbUser.role !== "HR_MANAGER" && dbUser.role !== "ADMIN")) {
+  // FIX: Cast role to string to prevent TypeScript "No Overlap" error
+  // This allows checking for "ADMIN" even if it's not in your strict Prisma Enum yet.
+  const userRole = dbUser?.role as string | undefined;
+
+  if (!dbUser || (userRole !== "HR_MANAGER" && userRole !== "ADMIN")) {
     redirect("/survey");
   }
   // ----------------------------------------
 
   const { weekNumber, year } = getCurrentWeekAndYear();
 
-  // GDPR: Do NOT fetch individual employee mapping to scores for the client
-  // Just fetch aggregates
-  const [survey, employees, initialSentiment] = await Promise.all([
-    prisma.survey.findUnique({ where: { weekNumber_year: { weekNumber, year } } }),
-    prisma.user.findMany({
+  // 3. Parallel Fetching
+  const [survey, employeeCount, initialSentiment] = await Promise.all([
+    prisma.survey.findUnique({
+      where: { weekNumber_year: { weekNumber, year } }
+    }),
+    prisma.user.count({
       where: { role: "EMPLOYEE" },
     }),
     prisma.weeklySentiment.findUnique({
       where: { weekNumber_year: { weekNumber, year } }
     })
   ]);
+
   let currentSentiment = initialSentiment;
 
+  // 4. Fetch History
   const historyRaw = await prisma.weeklySentiment.findMany({
     orderBy: { weekNumber: 'asc' },
     take: 6,
@@ -56,20 +59,20 @@ export default async function DashboardPage() {
     score: (h.score / 20)
   }));
 
-  // Calculate Churn Rate: Employees inactive for > 4 weeks
+  // 5. Calculate Churn Rate
   const fourWeeksAgo = new Date();
   fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
 
-  const activeUserIds = await prisma.response.findMany({
+  const activeUserCountGroup = await prisma.response.groupBy({
+    by: ['userId'],
     where: { submittedAt: { gte: fourWeeksAgo } },
-    select: { userId: true },
-    distinct: ['userId']
   });
+  const activeUserCount = activeUserCountGroup.length;
 
-  const churnCount = employees.length - activeUserIds.length;
-  const churnRate = employees.length ? Math.round((churnCount / employees.length) * 100) : 0;
+  const churnCount = Math.max(0, employeeCount - activeUserCount);
+  const churnRate = employeeCount ? Math.round((churnCount / employeeCount) * 100) : 0;
 
-
+  // Early Return if no survey
   if (!survey) {
     return (
       <DashboardClient
@@ -89,25 +92,33 @@ export default async function DashboardPage() {
     );
   }
 
-  const engagementStats = await prisma.response.aggregate({
-    where: { surveyId: survey.id, valueNumeric: { not: null } },
-    _avg: { valueNumeric: true }
-  });
+  // 6. Fetch Survey Metrics
+  const [engagementStats, respondents, userScores, openFeedbackRaw, actionCache] = await Promise.all([
+    prisma.response.aggregate({
+      where: { surveyId: survey.id, valueNumeric: { not: null } },
+      _avg: { valueNumeric: true }
+    }),
+    prisma.response.groupBy({
+      by: ['userId'],
+      where: { surveyId: survey.id }
+    }),
+    prisma.response.findMany({
+      where: { surveyId: survey.id, valueNumeric: { not: null } },
+      select: { userId: true, valueNumeric: true }
+    }),
+    prisma.response.findMany({
+      where: { surveyId: survey.id, valueText: { not: null } },
+      select: { valueText: true }
+    }),
+    prisma.actionCache.findUnique({
+      where: { surveyId_language: { surveyId: survey.id, language: 'nl' } }
+    })
+  ]);
 
-  const respondents = await prisma.response.groupBy({
-    by: ['userId'],
-    where: { surveyId: survey.id }
-  });
-
-  const participationRate = employees.length ? Math.round((respondents.length / employees.length) * 100) : 0;
+  const participationRate = employeeCount ? Math.round((respondents.length / employeeCount) * 100) : 0;
   const engagementScore = engagementStats._avg.valueNumeric || 0;
 
-  // Calculate Aggregates (Privacy Preserving)
-  const userScores = await prisma.response.findMany({
-    where: { surveyId: survey.id, valueNumeric: { not: null } },
-    select: { userId: true, valueNumeric: true }
-  });
-
+  // 7. Calculate Risks
   const scoreMap = new Map<string, number[]>();
   userScores.forEach(r => {
     const scores = scoreMap.get(r.userId) || [];
@@ -118,31 +129,22 @@ export default async function DashboardPage() {
   let riskCount = 0;
   let safeCount = 0;
 
-  employees.forEach(u => {
-    const scores = scoreMap.get(u.id) || [];
+  for (const scores of scoreMap.values()) {
     if (scores.length > 0) {
       const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
       if (avg < 3.5) riskCount++;
       else safeCount++;
     }
-  });
-
-  const openFeedbackRaw = await prisma.response.findMany({
-    where: { surveyId: survey.id, valueText: { not: null } },
-    select: { valueText: true }
-  });
+  }
 
   const openFeedback = openFeedbackRaw
     .filter(r => r.valueText && r.valueText.trim().length > 0)
     .map(r => ({ userName: "Anonymous", text: r.valueText as string }));
 
-  // Fetch Actions
-  let actionCache = await prisma.actionCache.findUnique({
-    where: { surveyId_language: { surveyId: survey.id, language: 'nl' } }
-  });
-
+  // 8. AI Generation Logic
   const needsInsight = !currentSentiment;
   const needsActions = !actionCache;
+  let actions = actionCache ? JSON.parse(actionCache.actionsJson) : [];
 
   if ((needsInsight || needsActions) && respondents.length > 0) {
     const config = await prisma.aIConfig.findUnique({ where: { key: "question_generation" } });
@@ -160,42 +162,36 @@ export default async function DashboardPage() {
     });
 
     const distinctUserIds = Array.from(new Set(fullResponses.map(r => r.userId)));
-    const teamResponses = distinctUserIds.map(userId => {
-      const userRes = fullResponses.filter(r => r.userId === userId);
-      return {
-        employeeName: userRes[0]?.user.name || "Anonymous",
-        responses: userRes.map(r => ({
-          questionText: r.question.text,
-          valueNumeric: r.valueNumeric || undefined,
-          valueText: r.valueText || undefined
-        }))
-      };
-    });
 
-    const allResponses = fullResponses.map(r => ({
-      userName: r.user.name || "Anonymous",
-      questionText: r.question.text,
-      valueNumeric: r.valueNumeric ?? undefined,
-      valueText: r.valueText ?? undefined,
-    }));
-
-    const lowScoreEmployees = distinctUserIds.map(userId => {
-      const userRes = fullResponses.filter(r => r.userId === userId);
-      const scores = userRes.filter(r => r.valueNumeric !== null).map(r => r.valueNumeric!);
-      const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 5;
-      const feedback = userRes.find(r => r.valueText)?.valueText;
-      return { name: userRes[0]?.user.name || "Unknown", score: avg, feedback: feedback || undefined };
-    }).filter(u => u.score < 2.5);
-
-    const openFeedbackAi = fullResponses
-      .filter(r => r.valueText)
-      .map(r => ({ userName: r.user.name || "Anonymous", text: r.valueText! }));
+    // Data prep helpers
+    const formatResponsesForAI = () => {
+      return fullResponses.map(r => ({
+        userName: "Employee", // Anonymized
+        questionText: r.question.text,
+        valueNumeric: r.valueNumeric ?? undefined,
+        valueText: r.valueText ?? undefined,
+      }));
+    };
 
     if (needsInsight) {
+      const teamResponses = distinctUserIds.map(userId => {
+        const userRes = fullResponses.filter(r => r.userId === userId);
+        return {
+          employeeName: "Employee",
+          responses: userRes.map(r => ({
+            questionText: r.question.text,
+            valueNumeric: r.valueNumeric || undefined,
+            valueText: r.valueText || undefined
+          }))
+        };
+      });
+
       try {
         const summary = await generateTeamInsights(teamResponses, weekNumber, year, 'nl');
-        const newSentiment = await prisma.weeklySentiment.create({
-          data: {
+        const newSentiment = await prisma.weeklySentiment.upsert({
+          where: { weekNumber_year: { weekNumber, year } },
+          update: {},
+          create: {
             weekNumber,
             year,
             score: Math.round(engagementScore * 20),
@@ -204,16 +200,28 @@ export default async function DashboardPage() {
         });
         currentSentiment = newSentiment;
       } catch (err) {
-        console.error("Failed to generate on-the-fly insight:", err);
+        console.error("AI Insight Error:", err);
       }
     }
 
     if (needsActions) {
+      const lowScoreEmployees = distinctUserIds.map(userId => {
+        const userRes = fullResponses.filter(r => r.userId === userId);
+        const scores = userRes.filter(r => r.valueNumeric !== null).map(r => r.valueNumeric!);
+        const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 5;
+        const feedback = userRes.find(r => r.valueText)?.valueText;
+        return { name: "Employee", score: avg, feedback: feedback || undefined };
+      }).filter(u => u.score < 2.5);
+
+      const openFeedbackAi = fullResponses
+        .filter(r => r.valueText)
+        .map(r => ({ userName: "Employee", text: r.valueText! }));
+
       try {
         const generatedActions = await generateActionRecommendations(
           engagementScore,
           participationRate,
-          allResponses,
+          formatResponsesForAI(),
           lowScoreEmployees,
           openFeedbackAi,
           weekNumber,
@@ -222,20 +230,19 @@ export default async function DashboardPage() {
           'nl'
         );
 
-        actionCache = await prisma.actionCache.create({
+        const newCache = await prisma.actionCache.create({
           data: {
             surveyId: survey.id,
             language: 'nl',
             actionsJson: JSON.stringify(generatedActions)
           }
         });
+        actions = generatedActions;
       } catch (err) {
-        console.error("Failed to generate on-the-fly actions:", err);
+        console.error("AI Action Error:", err);
       }
     }
   }
-
-  const actions = actionCache ? JSON.parse(actionCache.actionsJson) : [];
 
   return (
     <DashboardClient
