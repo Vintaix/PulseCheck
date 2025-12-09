@@ -29,31 +29,34 @@ export async function GET(request: NextRequest) {
         // Step 1: Check user_metadata.role first
         let role = user.user_metadata?.role?.toLowerCase();
 
-        // Step 2: If missing, query the profiles table
+        // Step 2: If missing, query the profiles table with retry mechanism
         if (!role) {
-            const { data: profile, error: profileError } = await supabase
-                .from("profiles")
-                .select("role")
-                .eq("id", user.id)
-                .single();
+            for (let i = 0; i < 3; i++) {
+                const { data: profile, error: profileError } = await supabase
+                    .from("profiles")
+                    .select("role")
+                    .eq("id", user.id)
+                    .single();
 
-            if (profileError) {
-                console.error("Failed to fetch profile:", profileError);
-                // Profile might not exist yet - default to survey
-                return NextResponse.redirect(`${origin}/survey`);
+                if (!profileError && profile) {
+                    role = profile.role?.toLowerCase();
+                    break;
+                }
+
+                // Wait 500ms before retrying, if not the last attempt
+                if (i < 2) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
             }
-
-            role = profile?.role?.toLowerCase();
         }
 
         // Role-based redirection (strict routing)
-        if (role === "admin" || role === "manager" || role === "hr_manager") {
+        if (role === "hr_manager") {
+            return NextResponse.redirect(`${origin}/hr-dashboard`);
+        } else if (role === "admin" || role === "manager") {
             return NextResponse.redirect(`${origin}/manager/dashboard`);
-        } else if (role === "employee") {
-            return NextResponse.redirect(`${origin}/survey`);
         } else {
-            // Fallback - no role or unrecognized role, default to survey
-            console.warn("Unrecognized or missing role for user:", user.id, "role:", role);
+            // Default/Fallback: employee or role not found -> survey
             return NextResponse.redirect(`${origin}/survey`);
         }
     }
