@@ -31,6 +31,7 @@ export const env = {
     // NextAuth (Required)
     NEXTAUTH_SECRET: getRequiredEnv("NEXTAUTH_SECRET"),
     NEXTAUTH_URL: getOptionalEnv("NEXTAUTH_URL", "http://localhost:3000"),
+    NEXT_PUBLIC_APP_URL: getOptionalEnv("NEXT_PUBLIC_APP_URL", "http://localhost:3000"),
 
     // AI Provider (At least one required for AI features)
     GROQ_API_KEY: getOptionalEnv("GROQ_API_KEY"),
