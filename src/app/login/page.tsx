@@ -26,23 +26,44 @@ export default function LoginPage() {
   const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if already logged in
+  // Helper functie om te bepalen waar iemand heen moet
+  const handleRedirect = (role: string | undefined) => {
+    // Normaliseer de rol naar hoofdletters voor de check
+    const upperRole = role?.toUpperCase();
+
+    // Check voor alle management rollen
+    const managementRoles = ['HR_MANAGER', 'ADMIN', 'MANAGER'];
+
+    if (upperRole && managementRoles.includes(upperRole)) {
+      console.log('Redirecting Manager to /dashboard');
+      router.replace('/dashboard');
+    } else {
+      console.log('Redirecting User to /survey');
+      router.replace('/survey');
+    }
+  };
+
+  // Check if already logged in (Auto-login)
   useEffect(() => {
     async function checkAuth() {
       const { data: { session } } = await supabase.auth.getSession();
+
       if (session) {
-        // Get user role and redirect
-        const { data: profile } = await supabase
+        // Gebruiker is al ingelogd, haal rol op
+        const { data: profile, error } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', session.user.id)
           .single();
 
-        if (profile?.role === 'HR_MANAGER' || profile?.role === 'admin' || profile?.role === 'hr_manager') {
-          router.replace('/manager');
-        } else {
-          router.replace('/survey');
+        if (error) {
+          console.error("Auto-login profile fetch error:", error);
+          // Bij error niet zomaar doorsturen, maar sessie check stoppen
+          setCheckingSession(false);
+          return;
         }
+
+        handleRedirect(profile?.role);
       } else {
         setCheckingSession(false);
       }
@@ -55,7 +76,8 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    // 1. Inloggen
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -72,23 +94,29 @@ export default function LoginPage() {
       return;
     }
 
-    // Get user profile to determine redirect
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: profile } = await supabase
+    // 2. Als login succesvol is, haal profiel op
+    if (data.user) {
+      console.log("Login successful, fetching profile for:", data.user.id);
+
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role')
-        .eq('id', user.id)
+        .eq('id', data.user.id)
         .single();
 
-      if (profile?.role === 'HR_MANAGER' || profile?.role === 'admin' || profile?.role === 'hr_manager') {
-        router.push('/manager');
-      } else {
-        router.push('/survey');
+      if (profileError) {
+        console.error("Profile fetch failed:", profileError);
+        // Fallback: Als we geen profiel kunnen lezen, tonen we een error ipv naar survey te sturen
+        setError("Login successful, but could not load profile data. Please contact support.");
+        setLoading(false);
+        return;
       }
-    }
 
-    setLoading(false);
+      console.log("Profile found:", profile);
+      handleRedirect(profile?.role);
+    } else {
+      setLoading(false);
+    }
   };
 
   if (checkingSession) {
