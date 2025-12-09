@@ -78,12 +78,12 @@ export default function LandingPage() {
               <Logo className="w-16 h-16 mx-auto logo-pulse" />
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6 leading-tight">
-              Keep Your Team's Pulse<br />
+              Keep Your Team&apos;s Pulse<br />
               <span className="text-primary">Strong & Healthy</span>
             </h1>
             <p className="text-lg text-muted max-w-2xl mx-auto mb-8">
               AI-powered employee engagement surveys that help HR managers understand team sentiment,
-              predict churn risks, and take action before it's too late.
+              predict churn risks, and take action before it&apos;s too late.
             </p>
             <div className="flex items-center justify-center gap-4">
               <Link
@@ -141,7 +141,7 @@ export default function LandingPage() {
         <section className="bg-primary/5 py-16">
           <div className="max-w-4xl mx-auto px-6 text-center">
             <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
-              Ready to check your team's pulse?
+              Ready to check your team&apos;s pulse?
             </h2>
             <p className="text-muted mb-8">
               Start your free trial today. No credit card required.
