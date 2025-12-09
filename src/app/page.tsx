@@ -16,6 +16,7 @@ export default function LandingPage() {
     // Check if user is already logged in
     async function checkAuth() {
       const { data: { session } } = await supabase.auth.getSession();
+
       if (session) {
         // Get user role and redirect
         const { data: profile } = await supabase
@@ -24,12 +25,16 @@ export default function LandingPage() {
           .eq('id', session.user.id)
           .single();
 
-        if (profile?.role === 'HR_MANAGER') {
+        // UPDATED LOGIC: Check for all management roles here too
+        const managementRoles = ["HR_MANAGER", "ADMIN", "MANAGER"];
+
+        if (managementRoles.includes(profile?.role)) {
           router.replace('/dashboard');
         } else {
           router.replace('/survey');
         }
       } else {
+        // Only stop loading and show page if NO user is logged in
         setLoading(false);
       }
     }

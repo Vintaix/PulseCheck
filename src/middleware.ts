@@ -57,7 +57,18 @@ export async function middleware(request: NextRequest) {
       .single();
 
     const url = request.nextUrl.clone();
-    url.pathname = profile?.role === "HR_MANAGER" ? "/dashboard" : "/survey";
+    const role = profile?.role; // This comes from DB as uppercase usually (e.g. "HR_MANAGER")
+
+    // UPDATED LOGIC: Allow all management roles to go to dashboard
+    const managementRoles = ["HR_MANAGER", "ADMIN", "MANAGER"];
+
+    // Check if the user's role is in the list of management roles
+    if (managementRoles.includes(role)) {
+      url.pathname = "/dashboard";
+    } else {
+      url.pathname = "/survey";
+    }
+
     return NextResponse.redirect(url);
   }
 
