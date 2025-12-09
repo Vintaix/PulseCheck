@@ -3,12 +3,16 @@ import { ReactNode } from "react";
 import { LocaleProvider } from "@/i18n/LocaleContext";
 import { ThemeProvider } from "next-themes";
 
+import { SessionProvider } from "next-auth/react";
+
 export default function Providers({ children }: { children: ReactNode }) {
   return (
-    <LocaleProvider>
-      <ThemeProvider attribute="class" enableSystem={true}>
-        {children}
-      </ThemeProvider>
-    </LocaleProvider>
+    <SessionProvider>
+      <LocaleProvider>
+        <ThemeProvider attribute="class" enableSystem={true}>
+          {children}
+        </ThemeProvider>
+      </LocaleProvider>
+    </SessionProvider>
   );
 }
