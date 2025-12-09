@@ -4,9 +4,9 @@ import useSWR from 'swr';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
 import { useRouter } from 'next/navigation';
-import NavBar from '@/components/NavBar';
+import { createClient } from '@/lib/supabase/client';
 import { useLocale } from '@/i18n/LocaleContext';
-import { CheckCircle, Send, AlertTriangle } from 'lucide-react';
+import { CheckCircle, Send, AlertTriangle, LogOut } from 'lucide-react';
 
 import { en } from "@/i18n/messages/en";
 import { nl } from "@/i18n/messages/nl";
@@ -26,6 +26,13 @@ export default function SurveyPage() {
 
   const role = user?.role?.toLowerCase();
   const isEmployee = role === 'employee' || !role; // Default to employee if no role
+
+  // Sign Out handler
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
 
   useEffect(() => {
     if (!loading && user && !isEmployee) router.replace('/manager');
@@ -55,10 +62,26 @@ export default function SurveyPage() {
     setSubmitting(false);
   };
 
+  // Header component with Sign Out button
+  const Header = () => (
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+        <h1 className="text-xl font-bold text-foreground">Employee Survey</h1>
+        <button
+          onClick={handleSignOut}
+          className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors shadow-sm"
+        >
+          <LogOut size={18} />
+          Sign Out
+        </button>
+      </div>
+    </header>
+  );
+
   if (alreadyAnswered) {
     return (
       <div className="min-h-screen bg-background">
-        <NavBar />
+        <Header />
         <div className="max-w-xl mx-auto px-6 py-20">
           <div className="paper-card p-12 text-center animate-fade-in">
             <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-6">
@@ -76,12 +99,27 @@ export default function SurveyPage() {
     );
   }
 
+  // Loading state
+  if (loading || !initData) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="max-w-2xl mx-auto px-6 py-20">
+          <div className="paper-card p-12 text-center animate-fade-in">
+            <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-muted text-lg">Survey loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      <NavBar />
+      <Header />
       <div className="max-w-2xl mx-auto px-6 py-10">
 
-        {/* Header */}
+        {/* Page Title */}
         <div className="mb-10 animate-fade-in">
           <span className="text-sm font-semibold text-primary mb-2 block tracking-wide uppercase">
             Weekly Check-in
