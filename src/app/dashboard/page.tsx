@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server"; // <--- CHANGED: Use Supabase
 import { prisma } from "@/lib/prisma";
 import { getCurrentWeekAndYear } from "@/lib/week";
 import { generateTeamInsights, generateActionRecommendations } from "@/lib/ai";
@@ -7,11 +6,29 @@ import { redirect } from "next/navigation";
 import DashboardClient from "./DashboardClient";
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
-  const role = (session?.user as any)?.role as string | undefined;
+  // --- 1. AUTHENTICATION FIX (Supabase) ---
+  const supabase = await createClient();
 
-  if (!session?.user) redirect("/login");
-  if (role !== "HR_MANAGER") redirect("/survey");
+  // Check if user is logged in via Supabase
+  const { data: { user }, error } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    redirect("/login");
+  }
+
+  // Check the Role using the database (Prisma or Supabase)
+  // We use the Supabase User ID to find the user in Prisma
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id }, // Assumes Prisma User ID matches Supabase Auth ID
+    select: { role: true, name: true }
+  });
+
+  // If user not found in DB or wrong role, send to survey
+  // We check for both HR_MANAGER and ADMIN
+  if (!dbUser || (dbUser.role !== "HR_MANAGER" && dbUser.role !== "ADMIN")) {
+    redirect("/survey");
+  }
+  // ----------------------------------------
 
   const { weekNumber, year } = getCurrentWeekAndYear();
 
@@ -40,7 +57,6 @@ export default async function DashboardPage() {
   }));
 
   // Calculate Churn Rate: Employees inactive for > 4 weeks
-  // Find last response per user
   const fourWeeksAgo = new Date();
   fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
 
@@ -57,7 +73,7 @@ export default async function DashboardPage() {
   if (!survey) {
     return (
       <DashboardClient
-        userName={session.user.name || "Manager"}
+        userName={dbUser.name || "Manager"}
         weekNumber={weekNumber}
         year={year}
         engagementScore={0}
@@ -106,32 +122,29 @@ export default async function DashboardPage() {
     const scores = scoreMap.get(u.id) || [];
     if (scores.length > 0) {
       const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-      if (avg < 3.5) riskCount++; // Define risk threshold
+      if (avg < 3.5) riskCount++;
       else safeCount++;
     }
   });
 
   const openFeedbackRaw = await prisma.response.findMany({
     where: { surveyId: survey.id, valueText: { not: null } },
-    select: { valueText: true } // GDPR: Do NOT select user name
+    select: { valueText: true }
   });
 
   const openFeedback = openFeedbackRaw
     .filter(r => r.valueText && r.valueText.trim().length > 0)
-    .map(r => ({ userName: "Anonymous", text: r.valueText as string })); // Force Anonymous
+    .map(r => ({ userName: "Anonymous", text: r.valueText as string }));
 
   // Fetch Actions
   let actionCache = await prisma.actionCache.findUnique({
-    where: { surveyId_language: { surveyId: survey.id, language: 'nl' } } // Assuming NL default for now
+    where: { surveyId_language: { surveyId: survey.id, language: 'nl' } }
   });
 
-  // --- ON-THE-FLY GENERATION ---
-  // If we have responses but no insights/actions (or cache was cleared), generate them now.
   const needsInsight = !currentSentiment;
   const needsActions = !actionCache;
 
   if ((needsInsight || needsActions) && respondents.length > 0) {
-    // 1. Fetch Config
     const config = await prisma.aIConfig.findUnique({ where: { key: "question_generation" } });
     const aiConfig = config ? {
       questionPrompt: config.questionPrompt,
@@ -141,14 +154,11 @@ export default async function DashboardPage() {
       insightsPrompt: config.insightsPrompt ?? undefined
     } : undefined;
 
-    // 2. Fetch Full Response Data (Server-Side)
     const fullResponses = await prisma.response.findMany({
       where: { surveyId: survey.id },
       include: { user: true, question: true }
     });
 
-    // 3. Prepare Data Structures
-    // For Team Insights
     const distinctUserIds = Array.from(new Set(fullResponses.map(r => r.userId)));
     const teamResponses = distinctUserIds.map(userId => {
       const userRes = fullResponses.filter(r => r.userId === userId);
@@ -162,7 +172,6 @@ export default async function DashboardPage() {
       };
     });
 
-    // For Action Recommendations
     const allResponses = fullResponses.map(r => ({
       userName: r.user.name || "Anonymous",
       questionText: r.question.text,
@@ -182,7 +191,6 @@ export default async function DashboardPage() {
       .filter(r => r.valueText)
       .map(r => ({ userName: r.user.name || "Anonymous", text: r.valueText! }));
 
-    // 4. Generate & Save Missing Data
     if (needsInsight) {
       try {
         const summary = await generateTeamInsights(teamResponses, weekNumber, year, 'nl');
@@ -194,7 +202,6 @@ export default async function DashboardPage() {
             summary
           }
         });
-        // Update local var for rendering
         currentSentiment = newSentiment;
       } catch (err) {
         console.error("Failed to generate on-the-fly insight:", err);
@@ -203,7 +210,6 @@ export default async function DashboardPage() {
 
     if (needsActions) {
       try {
-        // Generate for NL (default)
         const generatedActions = await generateActionRecommendations(
           engagementScore,
           participationRate,
@@ -233,7 +239,7 @@ export default async function DashboardPage() {
 
   return (
     <DashboardClient
-      userName={session.user.name || "Manager"}
+      userName={dbUser.name || "Manager"}
       weekNumber={weekNumber}
       year={year}
       engagementScore={engagementScore}
