@@ -2,7 +2,7 @@
 
 import useSWR from 'swr';
 import { useEffect, useMemo, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/useAuth';
 import { useRouter } from 'next/navigation';
 import NavBar from '@/components/NavBar';
 import { useLocale } from '@/i18n/LocaleContext';
@@ -19,18 +19,19 @@ type Question = { id: string; text: string; type: 'SCALE_1_5' | 'OPEN' };
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function SurveyPage() {
-  const { data: session, status } = useSession();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const { locale } = useLocale();
   const t = messages[locale as keyof typeof messages] || messages.en;
 
-  const isEmployee = (session?.user as any)?.role === 'EMPLOYEE';
+  const role = user?.role?.toLowerCase();
+  const isEmployee = role === 'employee' || !role; // Default to employee if no role
 
   useEffect(() => {
-    if (status === 'authenticated' && !isEmployee) router.replace('/dashboard');
-  }, [status, isEmployee, router]);
+    if (!loading && user && !isEmployee) router.replace('/manager');
+  }, [loading, user, isEmployee, router]);
 
-  const { data: initData } = useSWR(status === 'authenticated' ? '/api/survey/init' : null, fetcher);
+  const { data: initData } = useSWR(!loading && user ? '/api/survey/init' : null, fetcher);
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);

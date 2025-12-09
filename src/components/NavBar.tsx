@@ -26,7 +26,8 @@ export default function NavBar() {
   if (loading) return null;
   if (!user) return null;
 
-  const isHR = user.role === 'HR_MANAGER';
+  const role = user.role?.toLowerCase();
+  const isHR = role === 'hr_manager' || role === 'admin';
   const isActive = (path: string) => pathname === path;
   const isActivePrefix = (prefix: string) => pathname.startsWith(prefix);
 
@@ -36,7 +37,7 @@ export default function NavBar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link
-            href={isHR ? "/dashboard" : "/survey"}
+            href={isHR ? "/manager" : "/survey"}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity group"
           >
             <Logo className="w-8 h-8" />
@@ -49,8 +50,8 @@ export default function NavBar() {
           {isHR && (
             <div className="hidden md:flex items-center gap-2">
               <NavLink
-                href="/dashboard"
-                isActive={isActive('/dashboard')}
+                href="/manager"
+                isActive={isActive('/manager')}
                 icon={<LayoutDashboard className="w-4 h-4" />}
               >
                 {t.dashboard}

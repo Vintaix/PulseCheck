@@ -38,8 +38,8 @@ export default function LoginPage() {
           .eq('id', session.user.id)
           .single();
 
-        if (profile?.role === 'HR_MANAGER') {
-          router.replace('/dashboard');
+        if (profile?.role === 'HR_MANAGER' || profile?.role === 'admin' || profile?.role === 'hr_manager') {
+          router.replace('/manager');
         } else {
           router.replace('/survey');
         }
@@ -81,8 +81,8 @@ export default function LoginPage() {
         .eq('id', user.id)
         .single();
 
-      if (profile?.role === 'HR_MANAGER') {
-        router.push('/dashboard');
+      if (profile?.role === 'HR_MANAGER' || profile?.role === 'admin' || profile?.role === 'hr_manager') {
+        router.push('/manager');
       } else {
         router.push('/survey');
       }

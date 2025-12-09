@@ -39,15 +39,16 @@ export async function GET(request: NextRequest) {
             return NextResponse.redirect(`${origin}/survey`);
         }
 
-        // Role-based redirection
-        if (profile?.role === "HR_MANAGER") {
-            return NextResponse.redirect(`${origin}/manager/dashboard`);
-        } else if (profile?.role === "EMPLOYEE") {
+        // Role-based redirection (support uppercase and lowercase role values)
+        const role = profile?.role?.toLowerCase();
+        if (role === "hr_manager" || role === "admin") {
+            return NextResponse.redirect(`${origin}/manager`);
+        } else if (role === "employee") {
             return NextResponse.redirect(`${origin}/survey`);
         } else {
-            // Fallback - no role found
-            console.warn("No role found for user:", user.id);
-            return NextResponse.redirect(`${origin}/login?error=no_role`);
+            // Fallback - no role found, default to survey
+            console.warn("Unrecognized or missing role for user:", user.id, "role:", profile?.role);
+            return NextResponse.redirect(`${origin}/survey`);
         }
     }
 

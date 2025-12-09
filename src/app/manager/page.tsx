@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useRouter } from "next/navigation";
 import NavBar from "@/components/NavBar";
 import { useLocale } from "@/i18n/LocaleContext";
@@ -15,18 +15,19 @@ import { fr } from "@/i18n/messages/fr";
 const messages = { en, nl, fr };
 
 export default function ManagerPage() {
-    const { data: session, status } = useSession();
+    const { user, loading } = useAuth();
     const router = useRouter();
     const { locale } = useLocale();
     const t = messages[locale as keyof typeof messages] || messages.en;
 
-    const isHR = (session?.user as any)?.role === "HR_MANAGER";
+    const role = user?.role?.toLowerCase();
+    const isHR = role === "hr_manager" || role === "admin";
 
     useEffect(() => {
-        if (status === "authenticated" && !isHR) router.replace("/survey");
-    }, [status, isHR, router]);
+        if (!loading && user && !isHR) router.replace("/survey");
+    }, [loading, user, isHR, router]);
 
-    if (status === "loading") {
+    if (loading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
                 <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
