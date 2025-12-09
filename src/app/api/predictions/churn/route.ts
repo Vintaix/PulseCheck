@@ -1,18 +1,43 @@
-
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma'; // Assuming prisma is exported from here
+import { createClient } from '@/lib/supabase/server';
+import { prisma } from '@/lib/prisma';
 import { calculateChurnRisk, ChurnRisk } from '@/lib/churn';
 
-export async function GET(_request: Request) {
+export const dynamic = "force-dynamic";
+
+export async function GET() {
     try {
-        // 1. Fetch Users and their *recent* responses
-        // Limit to last 4 weeks for relevance?
+        const supabase = await createClient();
+
+        // Get authenticated user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        // Get user profile with company info
+        const { data: profile } = await supabase
+            .from("profiles")
+            .select("role, company_id")
+            .eq("id", user.id)
+            .single();
+
+        if (!profile || profile.role !== "HR_MANAGER") {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
+        if (!profile.company_id) {
+            return NextResponse.json({ error: "No company assigned" }, { status: 400 });
+        }
+
+        // Fetch Users and their *recent* responses - FILTERED BY COMPANY
         const fourWeeksAgo = new Date();
         fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
 
         const users = await prisma.user.findMany({
             where: {
-                role: 'EMPLOYEE'
+                role: 'EMPLOYEE',
+                companyId: profile.company_id  // Multi-tenant filtering
             },
             include: {
                 responses: {
@@ -53,13 +78,7 @@ export async function GET(_request: Request) {
                 const numericScores = numericDetails.map(n => n.score);
                 const risk = await calculateChurnRisk({
                     entityName: user.name,
-                    numericScores, // Keep for backward compat if logic uses it (it creates it from details now?)
-                    // Wait, logic now IGNORES numericScores arg in my previous edit? 
-                    // Let's look at churn.ts again.
-                    // I removed numericScores usage? No, I added numericDetails but kept numericScores in signature?
-                    // Let's check signature in churn.ts.
-                    // It has both. I should provide both or remove simple one.
-                    // The error said `numericDetails` is missing.
+                    numericScores,
                     numericDetails,
                     textResponses
                 }, 'USER');
@@ -67,8 +86,7 @@ export async function GET(_request: Request) {
             }
 
             // Aggregate for Department
-            // user.department might trigger lint if schema update not recognized, but it's valid code.
-            const dept = (user as any).department || 'General';
+            const dept = user.department || 'General';
             if (!departmentData[dept]) {
                 departmentData[dept] = { numericDetails: [], text: [] };
             }

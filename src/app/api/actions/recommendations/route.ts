@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentWeekAndYear } from "@/lib/week";
 import { generateActionRecommendations } from "@/lib/ai";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   if ((session?.user as any)?.role !== "HR_MANAGER") {

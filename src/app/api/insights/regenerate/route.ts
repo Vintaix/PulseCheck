@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCurrentWeekAndYear } from "@/lib/week";
 
+export const dynamic = "force-dynamic";
+
 export async function POST() {
   const session = await getServerSession(authOptions);
   if ((session?.user as any)?.role !== "HR_MANAGER") {

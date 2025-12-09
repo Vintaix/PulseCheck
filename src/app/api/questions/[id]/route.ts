@@ -3,6 +3,22 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
+export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions);
+  if ((session?.user as any)?.role !== "HR_MANAGER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const id = params.id;
+  const question = await prisma.question.findUnique({ where: { id } });
+
+  if (!question) {
+    return NextResponse.json({ error: "Question not found" }, { status: 404 });
+  }
+
+  return NextResponse.json(question);
+}
+
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if ((session?.user as any)?.role !== "HR_MANAGER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -93,5 +109,3 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     }, { status: 500 });
   }
 }
-
-

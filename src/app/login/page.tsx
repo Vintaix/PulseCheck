@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { signIn, useSession } from 'next-auth/react';
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/i18n/LocaleContext';
 import Logo from '@/components/Logo';
+import Link from 'next/link';
 import { AlertCircle, ArrowRight, Mail, Lock } from 'lucide-react';
 
 import { en } from "@/i18n/messages/en";
@@ -14,43 +15,98 @@ import { fr } from "@/i18n/messages/fr";
 const messages = { en, nl, fr };
 
 export default function LoginPage() {
-  const { data: session } = useSession();
   const router = useRouter();
   const { locale } = useLocale();
   const t = messages[locale as keyof typeof messages] || messages.en;
+  const supabase = createClient();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  if (session?.user) {
-    const role = (session.user as any).role;
-    if (role === 'HR_MANAGER') router.replace('/dashboard');
-    else router.replace('/survey');
-  }
+  // Check if already logged in
+  useEffect(() => {
+    async function checkAuth() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Get user role and redirect
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile?.role === 'HR_MANAGER') {
+          router.replace('/dashboard');
+        } else {
+          router.replace('/survey');
+        }
+      } else {
+        setCheckingSession(false);
+      }
+    }
+    checkAuth();
+  }, [router, supabase]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const res = await signIn('credentials', { redirect: false, email, password });
-    setLoading(false);
-    if (!res || res.error) {
-      setError(t.invalidCredentials || 'Invalid credentials');
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (signInError) {
+      setLoading(false);
+      if (signInError.message.includes('Invalid login credentials')) {
+        setError(t.invalidCredentials || 'Invalid email or password');
+      } else if (signInError.message.includes('Email not confirmed')) {
+        setError('Please confirm your email address first. Check your inbox.');
+      } else {
+        setError(signInError.message);
+      }
       return;
     }
-    setTimeout(() => window.location.reload(), 200);
+
+    // Get user profile to determine redirect
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.role === 'HR_MANAGER') {
+        router.push('/dashboard');
+      } else {
+        router.push('/survey');
+      }
+    }
+
+    setLoading(false);
   };
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-6">
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-block mb-6">
+          <Link href="/" className="inline-block mb-6">
             <Logo className="w-12 h-12" />
-          </div>
+          </Link>
           <h1 className="text-2xl font-bold text-foreground mb-2">
             {t.welcomeTo} {t.appName}
           </h1>
@@ -79,7 +135,7 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border border-card-border focus:border-primary focus:ring-1 focus:ring-primary"
                     placeholder="name@company.com"
                     required
                   />
@@ -93,7 +149,7 @@ export default function LoginPage() {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border border-card-border focus:border-primary focus:ring-1 focus:ring-primary"
                     placeholder="••••••••"
                     required
                   />
@@ -115,6 +171,16 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+
+          {/* Sign Up Link */}
+          <div className="mt-6 pt-6 text-center border-t border-card-border">
+            <p className="text-muted text-sm">
+              Don&apos;t have an account?{" "}
+              <Link href="/signup" className="font-semibold text-primary hover:text-primary-dark">
+                Sign up
+              </Link>
+            </p>
+          </div>
         </div>
 
         <p className="text-center text-xs text-muted mt-8">

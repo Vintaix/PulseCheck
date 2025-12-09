@@ -1,14 +1,33 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentWeekAndYear } from "@/lib/week";
 import { generateCompanyInsight } from "@/lib/ai";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
-  const session = await getServerSession(authOptions);
-  if ((session?.user as any)?.role !== "HR_MANAGER") {
+  const supabase = await createClient();
+
+  // Get authenticated user
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Get user profile with company info
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, company_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || profile.role !== "HR_MANAGER") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  if (!profile.company_id) {
+    return NextResponse.json({ error: "No company assigned" }, { status: 400 });
   }
 
   const url = new URL(req.url);
@@ -32,9 +51,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ insight: cached.content });
   }
 
-  // Collect all responses grouped by employee
+  // Collect all responses grouped by employee - FILTERED BY COMPANY
   const employees = await prisma.user.findMany({
-    where: { role: "EMPLOYEE" },
+    where: {
+      role: "EMPLOYEE",
+      companyId: profile.company_id  // Multi-tenant filtering
+    },
   });
 
   const teamResponses = await Promise.all(
@@ -73,9 +95,9 @@ export async function GET(req: Request) {
       },
     });
     return NextResponse.json({ insight: (insight || "").trim() });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to generate insight";
     console.error("Error generating company insight:", error);
-    return NextResponse.json({ error: error.message || "Failed to generate insight" }, { status: 500 });
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
-

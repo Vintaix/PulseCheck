@@ -19,6 +19,15 @@ enum QuestionType {
   OPEN
 }
 
+// Multi-tenancy: Company model
+model Company {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  users User[]
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -26,8 +35,10 @@ model User {
   department   String   @default("General")
   passwordHash String?
   role         Role     @default(EMPLOYEE)
+  companyId    String?
   createdAt    DateTime @default(now())
 
+  company   Company?   @relation(fields: [companyId], references: [id])
   responses Response[]
   Insight   Insight[]
 }

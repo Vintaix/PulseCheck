@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentWeekAndYear } from "@/lib/week";
 import { generateWeeklyQuestions } from "@/lib/ai";
 
+export const dynamic = "force-dynamic";
 export const maxDuration = 60; // Allow 60s for AI thinking
 
 export async function POST() {

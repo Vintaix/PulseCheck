@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useSession, signOut } from 'next-auth/react';
+import { useAuth } from '@/lib/useAuth';
 import { useLocale } from '@/i18n/LocaleContext';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Logo from './Logo';
 import { LogOut, ChevronDown, LayoutDashboard, MessageSquare, BarChart2 } from 'lucide-react';
 
@@ -14,20 +14,19 @@ import { fr } from "@/i18n/messages/fr";
 const messages = { en, nl, fr };
 
 export default function NavBar() {
-  const { data: session } = useSession();
+  const { user, loading, signOut } = useAuth();
   const { locale, setLocale } = useLocale();
-  const router = useRouter();
   const pathname = usePathname();
   const t = messages[locale as keyof typeof messages] || messages.en;
 
   const handleLogout = async () => {
-    await signOut({ redirect: false });
-    router.push('/login');
+    await signOut();
   };
 
-  if (!session) return null;
+  if (loading) return null;
+  if (!user) return null;
 
-  const isHR = (session?.user as any)?.role === 'HR_MANAGER';
+  const isHR = user.role === 'HR_MANAGER';
   const isActive = (path: string) => pathname === path;
   const isActivePrefix = (prefix: string) => pathname.startsWith(prefix);
 
@@ -93,7 +92,7 @@ export default function NavBar() {
 
             {/* User info */}
             <span className="text-sm text-muted hidden md:block truncate max-w-[200px]">
-              {session.user?.email}
+              {user.email}
             </span>
 
             {/* Logout button */}
@@ -126,8 +125,8 @@ function NavLink({
     <Link
       href={href}
       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${isActive
-          ? 'bg-primary/10 text-primary font-medium'
-          : 'text-muted hover:text-foreground hover:bg-background-secondary'
+        ? 'bg-primary/10 text-primary font-medium'
+        : 'text-muted hover:text-foreground hover:bg-background-secondary'
         }`}
     >
       {icon}
