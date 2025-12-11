@@ -1,28 +1,28 @@
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log("🌱 Starting seed...");
 
-  // Hash voor wachtwoord "password123"
-  const passwordHash = await bcrypt.hash("password123", 10);
+  // OPMERKING: We hashen hier geen wachtwoorden.
+  // Omdat je Supabase Auth gebruikt, worden wachtwoorden beheerd in de 'auth.users' tabel van Supabase.
+  // Dit script vult alleen de publieke 'profiles' (User) tabel.
 
-  // Maak HR Manager aan
+  // 1. Maak HR Manager Profiel aan
   const hrManager = await prisma.user.upsert({
     where: { email: "hr@test.com" },
-    update: {},
+    update: {}, // Als hij al bestaat, verander niets
     create: {
       email: "hr@test.com",
       name: "HR Manager",
-      passwordHash,
       role: "HR_MANAGER",
+      // passwordHash is verwijderd omdat dit niet in je schema staat
     },
   });
-  console.log("✅ HR Manager created:", hrManager.email);
+  console.log("✅ HR Manager profile created:", hrManager.email);
 
-  // Maak Employees aan
+  // 2. Maak Employee Profielen aan
   const employees = [
     { email: "employee1@test.com", name: "Jan Janssen" },
     { email: "employee2@test.com", name: "Marie Verstraete" },
@@ -36,14 +36,13 @@ async function main() {
       create: {
         email: emp.email,
         name: emp.name,
-        passwordHash,
         role: "EMPLOYEE",
       },
     });
-    console.log("✅ Employee created:", employee.email);
+    console.log("✅ Employee profile created:", employee.email);
   }
 
-  // Maak voorbeeld vragen aan
+  // 3. Maak voorbeeld vragen aan
   const questions = [
     {
       text: "Hoe tevreden ben je met je werk deze week?",
@@ -63,7 +62,7 @@ async function main() {
   ];
 
   for (const q of questions) {
-    // Check if question already exists
+    // Check of vraag al bestaat op basis van de tekst
     const existing = await prisma.question.findFirst({
       where: { text: q.text },
     });
@@ -83,9 +82,10 @@ async function main() {
   }
 
   console.log("🎉 Seed completed!");
-  console.log("\n📝 Test accounts:");
-  console.log("HR Manager: hr@test.com / password123");
-  console.log("Employees: employee1@test.com, employee2@test.com, employee3@test.com / password123");
+  console.log("\n⚠️  BELANGRIJK:");
+  console.log("Dit script heeft alleen de 'Profiles' aangemaakt in je database.");
+  console.log("Om daadwerkelijk in te loggen, moeten deze gebruikers ook bestaan in Supabase Auth.");
+  console.log("Je moet deze gebruikers dus nog handmatig registreren (Signup) in je app of via het Supabase dashboard met dezelfde e-mailadressen.");
 }
 
 main()
@@ -96,4 +96,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-
