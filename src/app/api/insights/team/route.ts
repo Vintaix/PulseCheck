@@ -72,7 +72,7 @@ export async function GET(req: Request) {
       });
 
       return {
-        employeeName: employee.name,
+        employeeName: employee.name || "Anonymous",
         responses: responses.map((r) => ({
           questionText: r.question.text,
           valueNumeric: r.valueNumeric ?? undefined,

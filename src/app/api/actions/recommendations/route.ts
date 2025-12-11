@@ -64,7 +64,7 @@ export async function GET(req: Request) {
 
   // Prepare ALL responses for AI analysis (with full context)
   const allResponses = responses.map((r) => ({
-    userName: r.user.name,
+    userName: r.user.name || "Anonymous",
     questionText: r.question.text,
     valueNumeric: r.valueNumeric ?? undefined,
     valueText: r.valueText ?? undefined,
@@ -92,7 +92,7 @@ export async function GET(req: Request) {
       const scores = userIdToScores.get(u.id) || [];
       const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
       const feedback = userIdToFeedback.get(u.id)?.join("; ") || undefined;
-      return { name: u.name, score: avg, feedback };
+      return { name: u.name || "Anonymous", score: avg, feedback };
     })
     .filter((e) => e.score !== null && e.score < 2.5)
     .map((e) => ({ name: e.name, score: e.score!, feedback: e.feedback }));
@@ -100,7 +100,7 @@ export async function GET(req: Request) {
   // Get open feedback
   const openFeedback = responses
     .filter((r) => r.valueText && r.valueText.trim().length > 0)
-    .map((r) => ({ userName: r.user.name, text: r.valueText as string }));
+    .map((r) => ({ userName: r.user.name || "Anonymous", text: r.valueText as string }));
 
   // Only generate AI recommendations if there are actual responses
   if (responses.length === 0) {

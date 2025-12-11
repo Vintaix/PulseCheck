@@ -230,7 +230,7 @@ export default async function DashboardPage() {
           'nl'
         );
 
-        const newCache = await prisma.actionCache.create({
+        await prisma.actionCache.create({
           data: {
             surveyId: survey.id,
             language: 'nl',

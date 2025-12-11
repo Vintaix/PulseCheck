@@ -77,7 +77,7 @@ export async function GET() {
             if (numericDetails.length > 0 || textResponses.length > 0) {
                 const numericScores = numericDetails.map(n => n.score);
                 const risk = await calculateChurnRisk({
-                    entityName: user.name,
+                    entityName: user.name || "Anonymous",
                     numericScores,
                     numericDetails,
                     textResponses

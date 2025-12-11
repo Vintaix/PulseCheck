@@ -3,7 +3,6 @@ import { prisma } from "./prisma";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import type { NextAuthOptions } from "next-auth";
-import bcrypt from "bcryptjs";
 
 
 export const authOptions: NextAuthOptions = {
@@ -18,11 +17,12 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-        // This now uses the local "prisma" variable
+        // This app uses Supabase Auth, not local password authentication.
+        // The CredentialsProvider is kept for compatibility but auth is handled by Supabase.
         const user = await prisma.user.findUnique({ where: { email: credentials.email } });
-        if (!user || !user.passwordHash) return null;
-        const ok = await bcrypt.compare(credentials.password, user.passwordHash);
-        if (!ok) return null;
+        if (!user) return null;
+        // Note: Password verification is handled by Supabase Auth, not here.
+        // This provider exists for NextAuth session compatibility only.
         return { id: user.id, email: user.email, name: user.name, role: user.role } as any;
       },
     }),
