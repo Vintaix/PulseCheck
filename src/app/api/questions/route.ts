@@ -12,7 +12,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  if ((session?.user as any)?.role !== "HR_MANAGER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const role = (session?.user as any)?.role?.toLowerCase();
+  if (role !== "hr_manager" && role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const body = await req.json();
   const { text, type, isActive } = body || {};
   if (!text || !type) return NextResponse.json({ error: "Missing fields" }, { status: 400 });

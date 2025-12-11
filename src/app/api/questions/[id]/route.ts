@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if ((session?.user as any)?.role !== "HR_MANAGER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const role = (session?.user as any)?.role?.toLowerCase();
+  if (role !== "hr_manager" && role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const id = params.id;
   const question = await prisma.question.findUnique({ where: { id } });
@@ -21,7 +22,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if ((session?.user as any)?.role !== "HR_MANAGER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const role = (session?.user as any)?.role?.toLowerCase();
+  if (role !== "hr_manager" && role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const id = params.id;
   const body = await req.json();
   const { text, type, isActive } = body || {};
@@ -44,7 +46,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if ((session?.user as any)?.role !== "HR_MANAGER") {
+  const role = (session?.user as any)?.role?.toLowerCase();
+
+  if (role !== "hr_manager" && role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

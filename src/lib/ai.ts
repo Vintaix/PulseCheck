@@ -20,7 +20,10 @@ const client = new OpenAI({
 });
 
 async function getCompletion(prompt: string, jsonMode = false) {
-    if (!apiKey) throw new Error("AI API Key not configured (OPENROUTER_API_KEY or GROQ_API_KEY)");
+    if (!apiKey) {
+        console.error("❌ AI Config Error: Missing API Key. Ensure GROQ_API_KEY or OPENROUTER_API_KEY is set in Vercel Environment Variables.");
+        throw new Error("AI API Key not configured");
+    }
 
     try {
         const response = await client.chat.completions.create({

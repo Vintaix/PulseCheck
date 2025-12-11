@@ -37,7 +37,7 @@ export default function NavBar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link
-            href={isHR ? "/manager" : "/survey"}
+            href={isHR ? "/analytics" : "/survey"}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity group"
           >
             <Logo className="w-8 h-8" />
@@ -50,8 +50,8 @@ export default function NavBar() {
           {isHR && (
             <div className="hidden md:flex items-center gap-2">
               <NavLink
-                href="/manager"
-                isActive={isActive('/manager')}
+                href="/analytics"
+                isActive={isActive('/analytics')}
                 icon={<LayoutDashboard className="w-4 h-4" />}
               >
                 {t.dashboard}
