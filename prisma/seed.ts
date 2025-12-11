@@ -5,28 +5,37 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Starting seed...");
 
-  // OPMERKING: We hashen hier geen wachtwoorden.
-  // Omdat je Supabase Auth gebruikt, worden wachtwoorden beheerd in de 'auth.users' tabel van Supabase.
-  // Dit script vult alleen de publieke 'profiles' (User) tabel.
-
   // 1. Maak HR Manager Profiel aan
   const hrManager = await prisma.user.upsert({
     where: { email: "hr@test.com" },
-    update: {}, // Als hij al bestaat, verander niets
+    update: {},
     create: {
+      // Omdat er geen @default(uuid()) in je schema staat, moeten we hier een ID meegeven:
+      id: "11111111-1111-1111-1111-111111111111",
       email: "hr@test.com",
       name: "HR Manager",
       role: "HR_MANAGER",
-      // passwordHash is verwijderd omdat dit niet in je schema staat
     },
   });
   console.log("✅ HR Manager profile created:", hrManager.email);
 
   // 2. Maak Employee Profielen aan
   const employees = [
-    { email: "employee1@test.com", name: "Jan Janssen" },
-    { email: "employee2@test.com", name: "Marie Verstraete" },
-    { email: "employee3@test.com", name: "Pieter De Vries" },
+    {
+      id: "22222222-2222-2222-2222-222222222222",
+      email: "employee1@test.com",
+      name: "Jan Janssen"
+    },
+    {
+      id: "33333333-3333-3333-3333-333333333333",
+      email: "employee2@test.com",
+      name: "Marie Verstraete"
+    },
+    {
+      id: "44444444-4444-4444-4444-444444444444",
+      email: "employee3@test.com",
+      name: "Pieter De Vries"
+    },
   ];
 
   for (const emp of employees) {
@@ -34,6 +43,7 @@ async function main() {
       where: { email: emp.email },
       update: {},
       create: {
+        id: emp.id, // Hier geven we de ID mee
         email: emp.email,
         name: emp.name,
         role: "EMPLOYEE",
@@ -62,7 +72,6 @@ async function main() {
   ];
 
   for (const q of questions) {
-    // Check of vraag al bestaat op basis van de tekst
     const existing = await prisma.question.findFirst({
       where: { text: q.text },
     });
@@ -82,10 +91,6 @@ async function main() {
   }
 
   console.log("🎉 Seed completed!");
-  console.log("\n⚠️  BELANGRIJK:");
-  console.log("Dit script heeft alleen de 'Profiles' aangemaakt in je database.");
-  console.log("Om daadwerkelijk in te loggen, moeten deze gebruikers ook bestaan in Supabase Auth.");
-  console.log("Je moet deze gebruikers dus nog handmatig registreren (Signup) in je app of via het Supabase dashboard met dezelfde e-mailadressen.");
 }
 
 main()
