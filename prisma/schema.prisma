@@ -14,7 +14,7 @@ datasource db {
 
 model User {
   id           String    @id @db.Uuid // Dit ID matcht met Supabase Auth, maar zonder harde DB-link
-  email        String?
+  email        String?   @unique      // <--- AANGEPAST: @unique toegevoegd
   name         String?
   passwordHint String?   @map("password_hint")
   role         Role      @default(EMPLOYEE)
@@ -34,12 +34,12 @@ model User {
 }
 
 model Company {
-  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name        String       @unique
-  createdAt   DateTime?    @default(now()) @map("created_at") @db.Timestamptz(6)
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String     @unique
+  createdAt    DateTime?  @default(now()) @map("created_at") @db.Timestamptz(6)
   
-  departments Department[]
-  users       User[]       
+  departments  Department[]
+  users        User[]        
 
   @@map("companies")
 }
