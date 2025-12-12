@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { Sparkles, Trash2, Edit2, Check, Plus, AlertCircle, ChevronUp, ChevronDown, ArrowLeft } from "lucide-react";
@@ -18,12 +18,11 @@ const messages = { en, nl, fr };
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function QuestionsPage() {
-    const { data: session, status } = useSession();
     const router = useRouter();
+    const [loading, setLoading] = useState(true);
+    // Unconditional hooks
     const { locale } = useLocale();
     const t = messages[locale as keyof typeof messages] || messages.en;
-
-    const isHR = (session?.user as any)?.role === "HR_MANAGER";
 
     const [isRegenerating, setIsRegenerating] = useState(false);
     const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -40,14 +39,35 @@ export default function QuestionsPage() {
 
     const { data: questions, mutate: mutateQuestions } = useSWR<Array<{ id: string; text: string; type: string; isActive: boolean }>>("/api/questions", fetcher);
 
+    useEffect(() => {
+        const checkAuth = async () => {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                router.replace("/login");
+                return;
+            }
+
+            const { data: profile } = await supabase
+                .from("profiles")
+                .select("role")
+                .eq("id", user.id)
+                .single();
+
+            if (profile?.role === "HR_MANAGER" || profile?.role === "ADMIN") {
+                // Auth success
+            } else {
+                router.replace("/survey");
+            }
+            setLoading(false);
+        };
+        checkAuth();
+    }, [router]);
+
     const showStatus = (type: 'success' | 'error', text: string) => {
         setStatusMessage({ type, text });
         setTimeout(() => setStatusMessage(null), 5000);
     };
-
-    useEffect(() => {
-        if (status === "authenticated" && !isHR) router.replace("/survey");
-    }, [status, isHR, router]);
 
     const handleCreateQuestion = async () => {
         if (!newQuestionText.trim()) return;
@@ -152,6 +172,8 @@ export default function QuestionsPage() {
             mutateQuestions();
         }
     };
+
+    if (loading) return null;
 
     return (
         <div className="min-h-screen bg-background">

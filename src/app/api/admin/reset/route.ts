@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAuthUser } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-    const session = await getServerSession(authOptions);
+    const authUser = await getAuthUser();
     const secretKey = req.headers.get("x-admin-key");
     const ADMIN_PASSWORD = "PulseAdmin2024!"; // Matching the login page secret
 
     // Allow if session is HR_MANAGER OR if the secret key matches
+    const role = authUser?.role?.toLowerCase();
     const isAuthorized =
-        ((session?.user as any)?.role === "HR_MANAGER") ||
+        (role === "hr_manager" || role === "admin") ||
         (secretKey === ADMIN_PASSWORD);
 
     if (!isAuthorized) {

@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCurrentWeekAndYear } from "@/lib/week";
+import { getAuthUser } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const authUser = await getAuthUser();
+  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const userId = (session.user as any).id as string;
-  const role = (session.user as any).role as string;
+  const userId = authUser.id;
+  const role = authUser.role;
+
+  // Note: Check if role case might conflict, DB role is typically uppercase (EMPLOYEE)
   if (role !== "EMPLOYEE") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();

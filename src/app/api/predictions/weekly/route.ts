@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-    const session = await getServerSession(authOptions);
-    const role = (session?.user as any)?.role?.toLowerCase();
+    const { getAuthUser } = await import("@/lib/auth-utils");
+    const authUser = await getAuthUser();
+    const role = authUser?.role?.toLowerCase();
 
     if (role !== "hr_manager" && role !== "admin") {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });

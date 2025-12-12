@@ -1,13 +1,12 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthUser } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Users, Mail, CheckCircle2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default async function TeamPage() {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) redirect("/login");
+    const authUser = await getAuthUser();
+    if (!authUser) redirect("/login");
 
     // Fetch all employees
     const employees = await prisma.user.findMany({

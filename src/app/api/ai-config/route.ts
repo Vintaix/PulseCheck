@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAuthUser } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -9,8 +8,10 @@ const CONFIG_KEY = "question_generation";
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if ((session?.user as any)?.role !== "HR_MANAGER") {
+    const authUser = await getAuthUser();
+    const role = authUser?.role?.toLowerCase();
+
+    if (role !== "hr_manager" && role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -48,8 +49,10 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-  const session = await getServerSession(authOptions);
-  if ((session?.user as any)?.role !== "HR_MANAGER") {
+  const authUser = await getAuthUser();
+  const role = authUser?.role?.toLowerCase();
+
+  if (role !== "hr_manager" && role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

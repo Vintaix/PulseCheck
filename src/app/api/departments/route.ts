@@ -42,7 +42,7 @@ export async function POST(req: Request) {
         .eq("id", user.id)
         .single();
 
-    if (!profile || profile.role !== "HR_MANAGER") {
+    if (!profile || (profile.role !== "HR_MANAGER" && profile.role?.toLowerCase() !== "hr_manager" && profile.role?.toLowerCase() !== "admin")) {
         return NextResponse.json({ error: "Only HR Managers can create departments" }, { status: 403 });
     }
 
