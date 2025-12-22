@@ -50,8 +50,8 @@ export default function NavBar() {
           {isHR && (
             <div className="hidden md:flex items-center gap-2">
               <NavLink
-                href="/analytics"
-                isActive={isActive('/analytics')}
+                href="/dashboard"
+                isActive={isActive('/dashboard')}
                 icon={<LayoutDashboard className="w-4 h-4" />}
               >
                 {t.dashboard}
