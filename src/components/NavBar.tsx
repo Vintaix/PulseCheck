@@ -37,7 +37,7 @@ export default function NavBar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link
-            href={isHR ? "/analytics" : "/survey"}
+            href={isHR ? "/dashboard" : "/survey"}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity group"
           >
             <Logo className="w-8 h-8" />

@@ -1,0 +1,22 @@
+[0]<a class='flex items-center gap-3 hover:opacity-80 transition-opacity group' href='/dashboard' />
+	[1]<img  />
+	[2]<span >PulseCheck />
+[3]<a class='flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all text-muted hover:text-foreground hover:bg-background-secondary' href='/dashboard'>Dashboard />
+[4]<a class='flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all bg-primary/10 text-primary font-medium' href='/manager/questions'>Vragenbeheer />
+[5]<a class='flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all text-muted hover:text-foreground hover:bg-background-secondary' href='/analytics'>Analytics />
+[6]<select class='appearance-none bg-transparent text-sm font-medium text-foreground hover:text-primary focus:outline-none cursor-pointer pr-5 py-1 transition-colors' />
+hr@test.com
+[7]<button class='flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-muted hover:text-danger hover:bg-danger/5 rounded-lg transition-all' />
+	[8]<span >Uitloggen />
+[9]<a class='inline-flex items-center gap-2 text-muted hover:text-foreground transition-colors mb-6' href='/manager'>Back to Manager />
+AI Configuratie
+Pas aan hoe de AI je vragen genereert.
+Vraaggeneratie AI
+Configureer hoe de AI wekelijkse enquêtevragen genereert.
+[10]<label class='block text-sm font-medium text-foreground mb-2'>Systeem Prompt />
+[11]<textarea class='w-full px-4 py-3 bg-background-secondary border border-card-border rounded-xl text-foreground text-sm font-mono focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none' placeholder='Voer systeemprompt in...' scrollable='true' />
+Inzichten AI
+Configureer hoe de AI inzichten genereert uit enquête-antwoorden. Gebruik dit om onbruikbare inzichten te filteren.
+Inzichten Systeem Prompt
+[12]<textarea class='w-full px-4 py-3 bg-background-secondary border border-card-border rounded-xl text-foreground text-sm font-mono focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none' placeholder='Bijv. Genereer uitvoerbare, specifieke inzichten. Vermijd generiek advies. Focus op concrete stappen die de HR-manager kan ondernemen...' />
+[13]<button class='px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark disabled:opacity-50 transition-all min-w-[140px] glow-hover'>Wijzigingen opslaan />

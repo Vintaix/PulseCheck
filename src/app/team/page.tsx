@@ -83,13 +83,13 @@ export default async function TeamPage() {
                                         "w-12 h-12 rounded-full flex items-center justify-center font-serif text-white text-xl shadow-sm",
                                         "bg-gray-800" // Sophisticated dark avatar
                                     )}>
-                                        {employee.name ? employee.name.charAt(0) : "?"}
+                                        {`E${employee.id.slice(0, 2).toUpperCase()}`}
                                     </div>
                                     <div>
-                                        <h3 className="font-medium text-lg text-gray-900 font-serif">{employee.name}</h3>
+                                        <h3 className="font-medium text-lg text-gray-900 font-serif">Employee #{employee.id.slice(0, 8)}</h3>
                                         <div className="flex items-center gap-1.5 text-xs text-gray-500 font-serif">
                                             <Mail size={12} />
-                                            {employee.email}
+                                            ****@****.***
                                         </div>
                                     </div>
                                 </div>

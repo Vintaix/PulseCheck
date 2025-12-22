@@ -21,7 +21,7 @@ export async function GET(_req: Request) {
                 take: 10,
                 orderBy: { submittedAt: 'desc' },
                 include: {
-                    user: { select: { name: true } },
+                    user: { select: { id: true } },
                     question: { select: { text: true } }
                 }
             })
@@ -33,7 +33,7 @@ export async function GET(_req: Request) {
             totalUsers,
             recentResponses: recentResponses.map(r => ({
                 submittedAt: r.submittedAt.toISOString(),
-                userName: r.user.name || "Anonymous",
+                userName: `Employee #${r.user.id.slice(0, 8)}`,
                 questionText: r.question.text.slice(0, 50) + (r.question.text.length > 50 ? '...' : '')
             }))
         });

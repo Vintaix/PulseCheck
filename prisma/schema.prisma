@@ -104,6 +104,7 @@ model AIConfig {
   language       String   @default("Nederlands")
   updatedAt      DateTime @default(now()) @updatedAt
   insightsPrompt String?
+  pulseFrequency String   @default("weekly") // weekly, biweekly, monthly
 }
 
 model Insight {

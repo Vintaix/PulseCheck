@@ -69,7 +69,7 @@ export async function GET(req: Request) {
         include: { question: true },
       });
       return {
-        employeeName: employee.name || "Anonymous",
+        employeeName: `Employee #${employee.id.slice(0, 8)}`,
         responses: responses.map((r) => ({
           questionText: r.question.text,
           valueNumeric: r.valueNumeric ?? undefined,

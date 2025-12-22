@@ -26,6 +26,36 @@ export async function GET(request: Request) {
       insightsPrompt: config.insightsPrompt ?? undefined
     } : undefined;
 
+    // Check if we should run based on frequency setting
+    const frequency = config?.pulseFrequency || 'weekly';
+    const today = new Date();
+    const dayOfMonth = today.getDate();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
+    // Frequency logic: 
+    // - weekly: run every Monday (dayOfWeek === 1)
+    // - biweekly: run on 1st and 15th of month
+    // - monthly: run on 1st of month only
+    let shouldRun = isManualForce; // Always run if forced
+
+    if (!isManualForce) {
+      if (frequency === 'weekly') {
+        shouldRun = dayOfWeek === 1; // Monday
+      } else if (frequency === 'biweekly') {
+        shouldRun = dayOfMonth === 1 || dayOfMonth === 15;
+      } else if (frequency === 'monthly') {
+        shouldRun = dayOfMonth === 1;
+      }
+    }
+
+    if (!shouldRun) {
+      return NextResponse.json({
+        message: `Skipped: Frequency is set to '${frequency}'. Use force=true to override.`,
+        nextScheduled: frequency === 'weekly' ? 'Next Monday' :
+          frequency === 'biweekly' ? '1st or 15th of month' : '1st of next month'
+      });
+    }
+
     // Fetch current week's survey with responses
     const currentSurvey = await prisma.survey.findUnique({
       where: { weekNumber_year: { weekNumber, year } },
@@ -53,7 +83,7 @@ export async function GET(request: Request) {
         const userResponses = responses.filter(r => r.userId === userId);
         const user = userResponses[0]?.user;
         return {
-          employeeName: user?.name || "Anonymous",
+          employeeName: `Employee #${user?.id.slice(0, 8) || 'N/A'}`,
           responses: userResponses.map(r => ({
             questionText: r.question.text,
             valueNumeric: r.valueNumeric || undefined,
@@ -63,7 +93,7 @@ export async function GET(request: Request) {
       });
 
       const allResponses = responses.map(r => ({
-        userName: r.user.name || "Anonymous",
+        userName: `Employee #${r.userId.slice(0, 8)}`,
         questionText: r.question.text,
         valueNumeric: r.valueNumeric || undefined,
         valueText: r.valueText || undefined
@@ -74,12 +104,12 @@ export async function GET(request: Request) {
         const scores = userResponses.filter(r => r.valueNumeric !== null).map(r => r.valueNumeric!);
         const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 5;
         const feedback = userResponses.find(r => r.valueText)?.valueText;
-        return { name: userResponses[0]?.user.name || "Unknown", score: avg, feedback: feedback || undefined };
+        return { name: `Employee #${userId.slice(0, 8)}`, score: avg, feedback: feedback || undefined };
       }).filter(u => u.score < 2.5);
 
       const openFeedback = responses
         .filter(r => r.valueText)
-        .map(r => ({ userName: r.user.name || "Anonymous", text: r.valueText! }));
+        .map(r => ({ userName: `Employee #${r.userId.slice(0, 8)}`, text: r.valueText! }));
 
       // 3. Generate Team Insight (Summary)
       const teamInsightText = await generateTeamInsights(teamResponses, weekNumber, year, 'nl'); // Default NL
