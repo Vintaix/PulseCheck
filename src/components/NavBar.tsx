@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/useAuth';
 import { useLocale } from '@/i18n/LocaleContext';
 import { usePathname } from 'next/navigation';
 import Logo from './Logo';
-import { LogOut, ChevronDown, LayoutDashboard, MessageSquare, BarChart2 } from 'lucide-react';
+import { LogOut, ChevronDown, LayoutDashboard, MessageSquare, BarChart2, Calendar } from 'lucide-react';
 
 import { en } from "@/i18n/messages/en";
 import { nl } from "@/i18n/messages/nl";
@@ -69,6 +69,13 @@ export default function NavBar() {
                 icon={<BarChart2 className="w-4 h-4" />}
               >
                 Analytics
+              </NavLink>
+              <NavLink
+                href="/admin/pulse-config"
+                isActive={isActive('/admin/pulse-config')}
+                icon={<Calendar className="w-4 h-4" />}
+              >
+                Schedule
               </NavLink>
             </div>
           )}
